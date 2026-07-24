@@ -1,0 +1,1 @@
+const a={hidden:{opacity:0,y:30},visible:(i=0)=>({opacity:1,y:0,transition:{duration:.6,ease:[.25,.4,.25,1],delay:i}})},e={hidden:{opacity:0},visible:{opacity:1,transition:{staggerChildren:.12,delayChildren:.1}}};export{a as f,e as s};
