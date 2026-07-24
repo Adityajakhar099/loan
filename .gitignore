@@ -24,6 +24,11 @@ build/
 .vscode/
 .idea/
 
+# CatBoost
+catboost_info/
+backend/catboost_info/
+
 # OS
 .DS_Store
 Thumbs.db
+

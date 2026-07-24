@@ -173,6 +173,18 @@ class LoanModelTrainer:
 
         preprocessor.save(str(preprocessor_path))
 
+        if best_model is not None and SKLEARN_AVAILABLE:
+            charts = self.evaluator.generate_and_save_charts(
+                best_model_name=best_name,
+                best_model=best_model,
+                X_test=X_test,
+                y_test=y_test,
+                comparison_results=results,
+                feature_names=preprocessor.feature_names or [],
+            )
+        else:
+            charts = {}
+
         metadata = {
             "trained_at": datetime.now(timezone.utc).isoformat(),
             "best_model_name": best_name,
@@ -180,7 +192,7 @@ class LoanModelTrainer:
             "all_models_eval": results,
             "feature_names": preprocessor.feature_names or LoanPreprocessor.NUMERICAL_COLS + LoanPreprocessor.CATEGORICAL_COLS,
             "num_samples": len(data),
-            "charts": {},
+            "charts": charts,
         }
 
         with open(metadata_path, "w", encoding="utf-8") as f:
@@ -194,3 +206,8 @@ def train_ml_pipeline(data_path: str | None = None) -> Dict[str, Any]:
     """Helper entry point to trigger training."""
     trainer = LoanModelTrainer()
     return trainer.train_and_evaluate_all(data_path)
+
+
+if __name__ == "__main__":
+    train_ml_pipeline()
+

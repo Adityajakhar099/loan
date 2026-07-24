@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Any, Union
-from jose import jwt
+from jose import JWTError, jwt
 from passlib.context import CryptContext
-from app.config.settings import settings
+from app.core.config import settings
 
-# Password hashing context (Prepared for Authentication)
+# Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -25,7 +25,6 @@ def create_access_token(
 ) -> str:
     """
     Generates a signed JWT access token.
-    Prepared for future Authentication phase.
     """
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -43,3 +42,16 @@ def create_access_token(
 
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
+
+def decode_access_token(token: str) -> Optional[dict]:
+    """
+    Decodes and validates a signed JWT access token.
+    Returns the payload dictionary if valid, or None if expired/invalid.
+    """
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        return payload
+    except JWTError:
+        return None
+

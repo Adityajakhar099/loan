@@ -114,12 +114,17 @@ def _extract_pdf_metadata(content: bytes, file_size: int) -> DocumentMetaRespons
     )
 
 
+# In-memory document fallback store for DB-degraded mode
+_in_memory_docs: dict[uuid.UUID, LoanDocument] = {}
+
+
 async def upload_document(
     file: UploadFile,
     db: AsyncSession,
 ) -> DocumentUploadResponse:
     """
     Validate, store, process, chunk, embed, and persist a loan-policy PDF.
+    Supports in-memory document metadata fallback if the database connection is offline.
     """
     original_filename = file.filename or "uploaded_document.pdf"
 
@@ -164,15 +169,19 @@ async def upload_document(
     # 8. Disk persistence
     stored_path, stored_filename = await _save_file_to_disk(original_filename, content)
 
-    # 9. Database record creation
+    # 9. Database record creation (with in-memory fallback)
     now = datetime.now(timezone.utc)
+    doc_id = uuid.uuid4()
     document = LoanDocument(
+        id=doc_id,
         filename=stored_filename,
         original_filename=original_filename,
         storage_path=str(stored_path),
         file_size=file_size,
         file_type="application/pdf",
         upload_date=now,
+        created_at=now,
+        updated_at=now,
         page_count=pdf_meta.page_count,
         status="PROCESSING",
         title=pdf_meta.title,
@@ -184,15 +193,16 @@ async def upload_document(
         is_processed=False,
         is_active=True,
     )
-    db.add(document)
 
+    is_db_connected = True
     try:
+        db.add(document)
         await db.flush()
         await db.refresh(document)
     except Exception as exc:
-        logger.exception("Database flush failed after document upload | error={}", exc)
-        stored_path.unlink(missing_ok=True)
-        raise DatabaseException() from exc
+        is_db_connected = False
+        logger.warning("Database unavailable during document upload | fallback=in-memory | error={}", exc)
+        _in_memory_docs[doc_id] = document
 
     # 10. RAG Pipeline: Extract Text -> Chunk Text -> Embed & Store in FAISS
     try:
@@ -207,7 +217,8 @@ async def upload_document(
 
         document.status = "PROCESSED"
         document.is_processed = True
-        await db.flush()
+        if is_db_connected:
+            await db.flush()
     except Exception as exc:
         logger.error("RAG indexing failed for document_id={}: {}", document.id, exc)
         document.status = "FAILED"
@@ -244,47 +255,67 @@ async def list_documents(
     """
     Return a paginated, search-filtered, and sorted list of stored documents.
     """
-    offset = (page - 1) * page_size
+    try:
+        offset = (page - 1) * page_size
 
-    base_query = select(LoanDocument)
-    if not include_inactive:
-        base_query = base_query.where(LoanDocument.is_active == True)  # noqa: E712
+        base_query = select(LoanDocument)
+        if not include_inactive:
+            base_query = base_query.where(LoanDocument.is_active == True)  # noqa: E712
 
-    if search:
-        search_pattern = f"%{search}%"
-        base_query = base_query.where(
-            (LoanDocument.original_filename.ilike(search_pattern))
-            | (LoanDocument.title.ilike(search_pattern))
-            | (LoanDocument.author.ilike(search_pattern))
+        if search:
+            search_pattern = f"%{search}%"
+            base_query = base_query.where(
+                (LoanDocument.original_filename.ilike(search_pattern))
+                | (LoanDocument.title.ilike(search_pattern))
+                | (LoanDocument.author.ilike(search_pattern))
+            )
+
+        # Sorting
+        sort_col = getattr(LoanDocument, sort_by, LoanDocument.created_at)
+        if sort_order.lower() == "desc":
+            base_query = base_query.order_by(sort_col.desc())
+        else:
+            base_query = base_query.order_by(sort_col.asc())
+
+        # Count total
+        count_query = select(func.count()).select_from(base_query.subquery())
+        total_result = await db.execute(count_query)
+        total = total_result.scalar_one()
+
+        # Fetch page
+        paginated = base_query.offset(offset).limit(page_size)
+        result = await db.execute(paginated)
+        documents = result.scalars().all()
+
+        doc_list = [DocumentListResponse.model_validate(d) for d in documents]
+        pagination = PaginationMeta(
+            page=page,
+            page_size=page_size,
+            total=total,
+            total_pages=ceil(total / page_size) if total > 0 else 0,
         )
 
-    # Sorting
-    sort_col = getattr(LoanDocument, sort_by, LoanDocument.created_at)
-    if sort_order.lower() == "desc":
-        base_query = base_query.order_by(sort_col.desc())
-    else:
-        base_query = base_query.order_by(sort_col.asc())
+        logger.debug("Listed {} documents | page={} | total={}", len(doc_list), page, total)
+        return doc_list, pagination
 
-    # Count total
-    count_query = select(func.count()).select_from(base_query.subquery())
-    total_result = await db.execute(count_query)
-    total = total_result.scalar_one()
-
-    # Fetch page
-    paginated = base_query.offset(offset).limit(page_size)
-    result = await db.execute(paginated)
-    documents = result.scalars().all()
-
-    doc_list = [DocumentListResponse.model_validate(d) for d in documents]
-    pagination = PaginationMeta(
-        page=page,
-        page_size=page_size,
-        total=total,
-        total_pages=ceil(total / page_size) if total > 0 else 0,
-    )
-
-    logger.debug("Listed {} documents | page={} | total={}", len(doc_list), page, total)
-    return doc_list, pagination
+    except Exception as exc:
+        logger.warning("DB query failed in list_documents. Falling back to in-memory store: {}", exc)
+        filtered = [d for d in _in_memory_docs.values() if include_inactive or d.is_active]
+        if search:
+            s = search.lower()
+            filtered = [
+                d for d in filtered
+                if s in d.original_filename.lower() or (d.title and s in d.title.lower())
+            ]
+        total = len(filtered)
+        doc_list = [DocumentListResponse.model_validate(d) for d in filtered]
+        pagination = PaginationMeta(
+            page=page,
+            page_size=page_size,
+            total=total,
+            total_pages=ceil(total / page_size) if total > 0 else 0,
+        )
+        return doc_list, pagination
 
 
 async def get_document_by_id(
@@ -295,12 +326,18 @@ async def get_document_by_id(
     """
     Retrieve a single document by its UUID.
     """
-    stmt = select(LoanDocument).where(LoanDocument.id == document_id)
-    if not include_inactive:
-        stmt = stmt.where(LoanDocument.is_active == True)  # noqa: E712
+    try:
+        stmt = select(LoanDocument).where(LoanDocument.id == document_id)
+        if not include_inactive:
+            stmt = stmt.where(LoanDocument.is_active == True)  # noqa: E712
 
-    result = await db.execute(stmt)
-    document = result.scalar_one_or_none()
+        result = await db.execute(stmt)
+        document = result.scalar_one_or_none()
+    except Exception as exc:
+        logger.warning("DB query failed in get_document_by_id. Falling back to in-memory store: {}", exc)
+        document = _in_memory_docs.get(document_id)
+        if document and not include_inactive and not document.is_active:
+            document = None
 
     if not document:
         raise NotFoundException(f"Document with ID '{document_id}' was not found.")
@@ -317,12 +354,17 @@ async def delete_document(
     Delete a document (soft-delete by default, hard-delete on request).
     Also automatically purges document vectors from the FAISS index.
     """
-    stmt = select(LoanDocument).where(
-        LoanDocument.id == document_id,
-        LoanDocument.is_active == True,  # noqa: E712
-    )
-    result = await db.execute(stmt)
-    document = result.scalar_one_or_none()
+    document = None
+    try:
+        stmt = select(LoanDocument).where(
+            LoanDocument.id == document_id,
+            LoanDocument.is_active == True,  # noqa: E712
+        )
+        result = await db.execute(stmt)
+        document = result.scalar_one_or_none()
+    except Exception as exc:
+        logger.warning("DB query failed in delete_document. Checking in-memory store: {}", exc)
+        document = _in_memory_docs.get(document_id)
 
     if not document:
         raise NotFoundException(f"Document with ID '{document_id}' was not found.")
@@ -343,11 +385,18 @@ async def delete_document(
             except OSError as exc:
                 logger.exception("Failed to delete file | path={} | error={}", file_path, exc)
                 raise FileStorageException(f"Could not delete file: {exc}") from exc
-        await db.delete(document)
+        try:
+            await db.delete(document)
+        except Exception:
+            _in_memory_docs.pop(document_id, None)
         message = "Document permanently deleted and vectors purged."
     else:
         document.is_active = False
         document.updated_at = datetime.now(timezone.utc)
+        try:
+            await db.flush()
+        except Exception:
+            _in_memory_docs[document_id] = document
         message = "Document soft-deleted successfully and vectors purged."
 
     logger.info(

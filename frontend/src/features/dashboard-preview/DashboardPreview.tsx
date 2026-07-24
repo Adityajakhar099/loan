@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { BarChart3, ShieldCheck, Activity, ArrowUpRight } from 'lucide-react';
+import { BarChart3, ShieldCheck, Activity, ArrowUpRight, Calculator, PieChart } from 'lucide-react';
 import { SectionWrapper } from '../../components/ui/SectionWrapper';
 import { Container } from '../../components/ui/Container';
 import { Card } from '../../components/ui/Card';
 import { useReveal } from '../../hooks/useReveal';
+import { MLEligibilityCalculator } from '../../components/ui/MLEligibilityCalculator';
+import { AnalyticsDashboard } from '../../components/ui/AnalyticsDashboard';
 
 export const DashboardPreview: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'metrics' | 'risk' | 'audit'>('metrics');
+  const [activeTab, setActiveTab] = useState<'calculator' | 'analytics' | 'metrics' | 'risk' | 'audit'>('calculator');
   const containerRef = useReveal<HTMLDivElement>({ duration: 1 });
 
   return (
@@ -14,19 +16,37 @@ export const DashboardPreview: React.FC = () => {
       id="dashboard-preview"
       badge="Enterprise Dashboard"
       title="Realistic Institutional Underwriting Console"
-      subtitle="Comprehensive risk monitoring, automated credit scoring, and compliance audit trail overview."
+      subtitle="Comprehensive risk monitoring, automated credit scoring, machine learning eligibility predictions, and AI telemetry analytics."
     >
       <Container>
         <div ref={containerRef} className="max-w-5xl mx-auto space-y-6">
           {/* Top Tab Bar */}
-          <div className="flex items-center justify-between p-2 rounded-2xl glass-card border border-white/10 max-w-md mx-auto">
+          <div className="flex items-center justify-between p-2 rounded-2xl glass-card border border-white/10 max-w-2xl mx-auto">
+            <button
+              onClick={() => setActiveTab('calculator')}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                activeTab === 'calculator' ? 'bg-sky-500 text-slate-950 shadow-glow' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Calculator className="w-3.5 h-3.5" />
+              ML Calculator
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                activeTab === 'analytics' ? 'bg-sky-500 text-slate-950 shadow-glow' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <PieChart className="w-3.5 h-3.5" />
+              AI Analytics & XAI
+            </button>
             <button
               onClick={() => setActiveTab('metrics')}
               className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
                 activeTab === 'metrics' ? 'bg-sky-500 text-slate-950 shadow-glow' : 'text-slate-400 hover:text-white'
               }`}
             >
-              Portfolio Metrics
+              Metrics
             </button>
             <button
               onClick={() => setActiveTab('risk')}
@@ -34,7 +54,7 @@ export const DashboardPreview: React.FC = () => {
                 activeTab === 'risk' ? 'bg-sky-500 text-slate-950 shadow-glow' : 'text-slate-400 hover:text-white'
               }`}
             >
-              Risk Heatmap
+              Risk Matrix
             </button>
             <button
               onClick={() => setActiveTab('audit')}
@@ -48,6 +68,18 @@ export const DashboardPreview: React.FC = () => {
 
           {/* Tab Content Display */}
           <Card className="p-6 sm:p-8 border border-white/10 shadow-2xl">
+            {activeTab === 'calculator' && (
+              <div className="animate-in fade-in duration-300">
+                <MLEligibilityCalculator />
+              </div>
+            )}
+
+            {activeTab === 'analytics' && (
+              <div className="animate-in fade-in duration-300">
+                <AnalyticsDashboard />
+              </div>
+            )}
+
             {activeTab === 'metrics' && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 {/* Metric Summary Cards */}
@@ -153,3 +185,5 @@ export const DashboardPreview: React.FC = () => {
     </SectionWrapper>
   );
 };
+
+

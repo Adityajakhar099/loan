@@ -4,5 +4,7 @@ Imports all models so metadata is registered cleanly when tables are created in 
 """
 from app.database.connection import Base
 from app.models.base_model import BaseModelMixin
+import app.models  # noqa: F401
 
 __all__ = ["Base", "BaseModelMixin"]
+
