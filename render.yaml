@@ -4,7 +4,7 @@ services:
   # ---------------------------------------------------------------------------
   - type: web
     name: loan-ai-backend
-    env: python
+    runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -39,9 +39,8 @@ services:
   # ---------------------------------------------------------------------------
   # 2. React SPA Frontend (Static Site)
   # ---------------------------------------------------------------------------
-  - type: web
+  - type: static_site
     name: loan-ai-frontend
-    env: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
