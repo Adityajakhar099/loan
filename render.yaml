@@ -1,9 +1,6 @@
 services:
-  # ---------------------------------------------------------------------------
-  # 1. FastAPI Backend Web Service
-  # ---------------------------------------------------------------------------
   - type: web
-    name: loan-ai-backend
+    name: loan-backend
     runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
@@ -11,55 +8,9 @@ services:
     envVars:
       - key: ENVIRONMENT
         value: production
-      - key: DEBUG
-        value: "false"
-      - key: ALLOWED_ORIGINS
-        value: "*"
-      - key: POSTGRES_SERVER
-        fromDatabase:
-          name: loan-ai-postgres
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: loan-ai-postgres
-          property: port
-      - key: POSTGRES_USER
-        fromDatabase:
-          name: loan-ai-postgres
-          property: user
-      - key: POSTGRES_PASSWORD
-        fromDatabase:
-          name: loan-ai-postgres
-          property: password
-      - key: POSTGRES_DB
-        fromDatabase:
-          name: loan-ai-postgres
-          property: database
 
-  # ---------------------------------------------------------------------------
-  # 2. React SPA Frontend (Static Site)
-  # ---------------------------------------------------------------------------
   - type: static_site
-    name: loan-ai-frontend
+    name: loan-frontend
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_API_BASE_URL
-        fromService:
-          type: web
-          name: loan-ai-backend
-          property: url
-
-# -----------------------------------------------------------------------------
-# 3. PostgreSQL Database
-# -----------------------------------------------------------------------------
-databases:
-  - name: loan-ai-postgres
-    databaseName: loan_ai_db
-    user: loan_ai_user
-    plan: free
