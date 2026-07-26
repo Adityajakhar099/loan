@@ -64,7 +64,8 @@ export const Navbar: React.FC = () => {
             <div className="hidden md:flex items-center gap-1 rounded-full px-4 py-1.5 glass-card border border-white/10">
               {NAV_ITEMS.map((item) => {
                 const isActive = location.pathname === item.href;
-                return (
+                const isHash = item.href.includes('#');
+                return isHash ? (
                   <a
                     key={item.label}
                     href={item.href}
@@ -76,6 +77,18 @@ export const Navbar: React.FC = () => {
                   >
                     {item.label}
                   </a>
+                ) : (
+                  <Link
+                    key={item.label}
+                    to={item.href}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 ${
+                      isActive
+                        ? 'bg-sky-500/20 text-sky-400 font-semibold'
+                        : 'text-slate-300 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
                 );
               })}
             </div>
@@ -145,16 +158,28 @@ export const Navbar: React.FC = () => {
           {/* Mobile Drawer */}
           {mobileMenuOpen && (
             <div className="md:hidden mt-4 p-5 rounded-2xl glass-card border border-white/10 flex flex-col gap-4 animate-in slide-in-from-top-4 duration-300">
-              {NAV_ITEMS.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-slate-200 hover:text-sky-400 text-base font-medium py-2 px-3 rounded-lg hover:bg-white/5 transition-colors"
-                >
-                  {item.label}
-                </a>
-              ))}
+              {NAV_ITEMS.map((item) => {
+                const isHash = item.href.includes('#');
+                return isHash ? (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-slate-200 hover:text-sky-400 text-base font-medium py-2 px-3 rounded-lg hover:bg-white/5 transition-colors"
+                  >
+                    {item.label}
+                  </a>
+                ) : (
+                  <Link
+                    key={item.label}
+                    to={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-slate-200 hover:text-sky-400 text-base font-medium py-2 px-3 rounded-lg hover:bg-white/5 transition-colors"
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
               <hr className="border-slate-800 my-1" />
               <div className="flex flex-col gap-2.5 pt-2">
                 {currentUser ? (
