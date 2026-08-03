@@ -84,32 +84,58 @@
   -webkit-text-fill-color: transparent;
 }
 
-/* Light Theme Overrides */
+/* Light Theme Overrides (Production & Minification Safe) */
 html.light {
   color-scheme: light;
 }
 
-html.light body {
+html.light body,
+html.light #root,
+html.light main {
   background-color: #f8fafc !important;
   color: #0f172a !important;
 }
 
-html.light .bg-\[\#020617\],
-html.light .bg-\[\#01040d\] {
+html.light div[class*="bg-[#020617]"],
+html.light div[class*="bg-[#01040d]"],
+html.light section[class*="bg-[#020617]"],
+html.light footer[class*="bg-[#01040d]"],
+html.light div[class*="bg-slate-950"],
+html.light section[class*="bg-slate-950"] {
   background-color: #f8fafc !important;
   color: #0f172a !important;
 }
 
 html.light .glass-card {
-  background: rgba(255, 255, 255, 0.85) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
   border: 1px solid rgba(203, 213, 225, 0.8) !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.06) !important;
   color: #0f172a !important;
 }
 
+html.light .glass-card-hover:hover {
+  background: rgba(241, 245, 249, 0.95) !important;
+  border-color: rgba(37, 99, 235, 0.3) !important;
+  box-shadow: 0 15px 30px -5px rgba(37, 99, 235, 0.12) !important;
+}
+
 html.light .glass-nav {
-  background: rgba(255, 255, 255, 0.9) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
   border-bottom: 1px solid rgba(203, 213, 225, 0.8) !important;
+}
+
+html.light h1,
+html.light h2,
+html.light h3,
+html.light h4,
+html.light h5,
+html.light h6,
+html.light label {
+  color: #0f172a !important;
+}
+
+html.light p {
+  color: #334155;
 }
 
 html.light .text-white,
@@ -124,9 +150,8 @@ html.light .text-slate-500 {
   color: #475569 !important;
 }
 
-html.light .bg-slate-900,
-html.light .bg-slate-950,
-html.light .bg-slate-900\/80 {
+html.light [class*="bg-slate-900"],
+html.light [class*="bg-slate-950"] {
   background-color: #ffffff !important;
   border-color: #cbd5e1 !important;
   color: #0f172a !important;
@@ -139,4 +164,16 @@ html.light select {
   color: #0f172a !important;
   border-color: #cbd5e1 !important;
 }
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.light .text-gradient {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 

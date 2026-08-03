@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: Union[str, List[str]] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://*.vercel.app",
+        "https://*.onrender.com",
+        "*"
     ]
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
@@ -37,9 +40,9 @@ class Settings(BaseSettings):
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
+        elif isinstance(v, list):
             return v
-        raise ValueError(v)
+        return ["*"]
 
     # Database Settings
     POSTGRES_SERVER: str = "localhost"
